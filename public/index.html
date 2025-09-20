@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Busca Estações ANATEL</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Buscar Estações ANATEL</h1>
+
+    <form id="buscaForm">
+      <label
+        >UF:
+        <input type="text" name="uf" placeholder="Ex: RJ" />
+      </label>
+
+      <label
+        >Município:
+        <input type="text" name="cidade" placeholder="Ex: Rio de Janeiro" />
+      </label>
+
+      <label
+        >Bairro:
+        <input type="text" name="bairro" placeholder="Ex: Gavea" />
+      </label>
+
+      <label
+        >CEP:
+        <input type="text" name="cep" placeholder="Ex: 22451040" />
+      </label>
+
+      <label
+        >Latitude:
+        <input
+          type="number"
+          step="any"
+          name="lat"
+          placeholder="Ex: -22.97846"
+        />
+      </label>
+
+      <label
+        >Longitude:
+        <input type="number" step="any" name="lng" placeholder="Ex: -43.2278" />
+      </label>
+
+      <label
+        >Raio (km):
+        <input type="number" name="raio" min="0" placeholder="Ex: 5" />
+      </label>
+
+      <button type="submit">Buscar</button>
+    </form>
+
+    <div id="resultado"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

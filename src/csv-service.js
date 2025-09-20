@@ -97,4 +97,73 @@ function getHoods(uf, cidade) {
   return Array.from(hoodByCity.get(`${uf}|${cidade}`) || []).sort();
 }
 
+function distanceInKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    const parser = parse({
+      columns: true,
+      delimiter: ";",
+      trim: true,
+      skip_empty_lines: true,
+      relaxColumnCount: true,
+    });
+
+    fs.createReadStream(SOURCE)
+      .pipe(parser)
+      .on("data", (row) => {
+        const ufVal = row["UF"]?.trim();
+        const cityVal = normalizeCity(row["Município-UF"]);
+        const hoodVal = row["EndBairro"]?.trim();
+        const cepVal = row["Cep"]?.trim();
+        const latVal = parseFloat(row["Latitude decimal"]);
+        const lonVal = parseFloat(row["Longitude decimal"]);
+
+        if (uf && ufVal !== uf) return;
+        if (cidade && cityVal !== cidade) return;
+        if (bairro && hoodVal !== bairro) return;
+        if (cep && cepVal !== cep) return;
+        if (lat && lng && raio) {
+          if (
+            isNaN(latVal) ||
+            isNaN(lonVal) ||
+            distanceInKm(lat, lng, latVal, lonVal) > raio
+          )
+            return;
+        }
+
+        results.push({
+          entidade: row["Entidade"],
+          tecnologia: row["Tecnologia"],
+          geracao: row["Geração"],
+          faixa: row["Faixa Estação"],
+          subfaixa: row["Subfaixa Estação"],
+          uf: ufVal,
+          municipio: cityVal,
+          bairro: hoodVal,
+          endereco: row["EnderecoEstacao"],
+          cep: cepVal,
+          latitude: latVal,
+          longitude: lonVal,
+          data_validade: row["Data Validade"],
+        });
+      })
+      .on("end", () => resolve(results))
+      .on("error", reject);
+  });
+}
+
 module.exports = { buildIndexes, search, getStates, getCities, getHoods };

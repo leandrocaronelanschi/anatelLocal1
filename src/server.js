@@ -49,3 +49,33 @@ buildIndexes()
     console.error("Falha ao indexar CSV:", e);
     process.exit(1);
   });
+
+app.get("/search", async (req, res) => {
+  const uf = req.query.uf;
+  const cidade = req.query.cidade;
+  const bairro = req.query.bairro;
+  const cep = req.query.cep;
+  const lat = req.query.lat ? parseFloat(req.query.lat) : undefined;
+  const lng = req.query.lng ? parseFloat(req.query.lng) : undefined;
+  const raio = req.query.raio ? parseFloat(req.query.raio) : undefined;
+
+  try {
+    const rows = await search({ uf, cidade, bairro, cep, lat, lng, raio });
+    res.json({ count: rows.length, rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self' https: data:; " +
+      "font-src 'self' https: data:; " +
+      "style-src 'self' 'unsafe-inline' https:; " +
+      "script-src 'self' 'unsafe-inline' https:;"
+  );
+  next();
+});
+
+app.use(express.static("public"));
