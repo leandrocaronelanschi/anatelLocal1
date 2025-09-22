@@ -10,6 +10,19 @@ const {
 const app = express();
 app.use(express.json());
 
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self' https: data:; " +
+      "font-src 'self' https: data:; " +
+      "style-src 'self' 'unsafe-inline' https:; " +
+      "script-src 'self' 'unsafe-inline' https:;"
+  );
+  next();
+});
+
+app.use(express.static("public"));
+
 app.get("/health", (_, res) => res.json({ ok: true, country: "Brasil" }));
 
 app.get("/filters/states", (req, res) => {
@@ -29,16 +42,6 @@ app.get("/filters/neighborhoods", (req, res) => {
   res.json({ uf, cidade, neighborhoods: getHoods(uf, cidade) });
 });
 
-app.get("/search", async (req, res) => {
-  const { uf, cidade, bairro } = req.query;
-  try {
-    const rows = await search({ uf, cidade, bairro });
-    res.json({ count: rows.length, rows });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 const PORT = process.env.PORT || 3000;
 
 buildIndexes()
@@ -50,32 +53,29 @@ buildIndexes()
     process.exit(1);
   });
 
+// Endpoint unificado para as duas formas de busca
 app.get("/search", async (req, res) => {
   const uf = req.query.uf;
   const cidade = req.query.cidade;
   const bairro = req.query.bairro;
   const cep = req.query.cep;
+
   const lat = req.query.lat ? parseFloat(req.query.lat) : undefined;
   const lng = req.query.lng ? parseFloat(req.query.lng) : undefined;
   const raio = req.query.raio ? parseFloat(req.query.raio) : undefined;
 
   try {
-    const rows = await search({ uf, cidade, bairro, cep, lat, lng, raio });
+    let rows;
+
+    // Se lat, lng e raio estão definidos, faz busca espacial somente
+    if (lat !== undefined && lng !== undefined && raio !== undefined) {
+      rows = await search({ lat, lng, raio });
+    } else {
+      // Senão usa a busca tradicional por 1-4 filtros (qualquer combinação deles)
+      rows = await search({ uf, cidade, bairro, cep });
+    }
     res.json({ count: rows.length, rows });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
-
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self' https: data:; " +
-      "font-src 'self' https: data:; " +
-      "style-src 'self' 'unsafe-inline' https:; " +
-      "script-src 'self' 'unsafe-inline' https:;"
-  );
-  next();
-});
-
-app.use(express.static("public"));

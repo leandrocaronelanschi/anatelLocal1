@@ -18,6 +18,7 @@ function addToMapSet(map, key, value) {
   if (value) map.get(key).add(value);
 }
 
+// Função buildIndexes – responsável por montar os índices de estados, cidades e bairros
 async function buildIndexes() {
   return new Promise((resolve, reject) => {
     const parser = parse({
@@ -59,7 +60,6 @@ function distanceInKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// FUNÇÃO search MODIFICADA PARA RETORNAR TODOS OS CAMPOS!
 async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -81,21 +81,20 @@ async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
         const latVal = parseFloat(row["Latitude decimal"]);
         const lonVal = parseFloat(row["Longitude decimal"]);
 
-        // Aplicar filtros normalmente
-        if (uf && ufVal !== uf) return;
-        if (cidade && cityVal !== cidade) return;
-        if (bairro && hoodVal !== bairro) return;
-        if (cep && cepVal !== cep) return;
-        if (lat && lng && raio) {
+        if (lat !== undefined && lng !== undefined && raio !== undefined) {
           if (
             isNaN(latVal) ||
             isNaN(lonVal) ||
             distanceInKm(lat, lng, latVal, lonVal) > raio
           )
             return;
+        } else {
+          if (uf && ufVal !== uf) return;
+          if (cidade && cityVal !== cidade) return;
+          if (bairro && hoodVal !== bairro) return;
+          if (cep && cepVal !== cep) return;
         }
 
-        // Retorne toda a linha do CSV (todos campos do cabeçalho)
         results.push(row);
       })
       .on("end", () => resolve(results))
@@ -113,4 +112,5 @@ function getHoods(uf, cidade) {
   return Array.from(hoodByCity.get(`${uf}|${cidade}`) || []).sort();
 }
 
+// Exportar as funções, incluindo buildIndexes
 module.exports = { buildIndexes, search, getStates, getCities, getHoods };
