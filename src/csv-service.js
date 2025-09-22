@@ -45,58 +45,6 @@ async function buildIndexes() {
   });
 }
 
-async function search({ uf, cidade, bairro }) {
-  return new Promise((resolve, reject) => {
-    const results = [];
-    const parser = parse({
-      columns: true,
-      delimiter: ";",
-      trim: true,
-      skip_empty_lines: true,
-      relaxColumnCount: true,
-    });
-
-    fs.createReadStream(SOURCE)
-      .pipe(parser)
-      .on("data", (row) => {
-        const ufVal = row["UF"]?.trim();
-        const cityVal = normalizeCity(row["Município-UF"]);
-        const hoodVal = row["EndBairro"]?.trim();
-
-        if (uf && ufVal !== uf) return;
-        if (cidade && cityVal !== cidade) return;
-        if (bairro && hoodVal !== bairro) return;
-
-        results.push({
-          entidade: row["Entidade"],
-          tecnologia: row["Tecnologia"],
-          geracao: row["Geração"],
-          faixa: row["Faixa Estação"],
-          subfaixa: row["Subfaixa Estação"],
-          uf: ufVal,
-          municipio: cityVal,
-          bairro: hoodVal,
-          endereco: row["EnderecoEstacao"],
-          latitude: row["Latitude decimal"],
-          longitude: row["Longitude decimal"],
-          data_validade: row["Data Validade"],
-        });
-      })
-      .on("end", () => resolve(results))
-      .on("error", reject);
-  });
-}
-
-function getStates() {
-  return Array.from(stateSet).sort();
-}
-function getCities(uf) {
-  return Array.from(cityByState.get(uf) || []).sort();
-}
-function getHoods(uf, cidade) {
-  return Array.from(hoodByCity.get(`${uf}|${cidade}`) || []).sort();
-}
-
 function distanceInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -111,6 +59,7 @@ function distanceInKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// FUNÇÃO search MODIFICADA PARA RETORNAR TODOS OS CAMPOS!
 async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -132,6 +81,7 @@ async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
         const latVal = parseFloat(row["Latitude decimal"]);
         const lonVal = parseFloat(row["Longitude decimal"]);
 
+        // Aplicar filtros normalmente
         if (uf && ufVal !== uf) return;
         if (cidade && cityVal !== cidade) return;
         if (bairro && hoodVal !== bairro) return;
@@ -145,25 +95,22 @@ async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
             return;
         }
 
-        results.push({
-          entidade: row["Entidade"],
-          tecnologia: row["Tecnologia"],
-          geracao: row["Geração"],
-          faixa: row["Faixa Estação"],
-          subfaixa: row["Subfaixa Estação"],
-          uf: ufVal,
-          municipio: cityVal,
-          bairro: hoodVal,
-          endereco: row["EnderecoEstacao"],
-          cep: cepVal,
-          latitude: latVal,
-          longitude: lonVal,
-          data_validade: row["Data Validade"],
-        });
+        // Retorne toda a linha do CSV (todos campos do cabeçalho)
+        results.push(row);
       })
       .on("end", () => resolve(results))
       .on("error", reject);
   });
+}
+
+function getStates() {
+  return Array.from(stateSet).sort();
+}
+function getCities(uf) {
+  return Array.from(cityByState.get(uf) || []).sort();
+}
+function getHoods(uf, cidade) {
+  return Array.from(hoodByCity.get(`${uf}|${cidade}`) || []).sort();
 }
 
 module.exports = { buildIndexes, search, getStates, getCities, getHoods };
