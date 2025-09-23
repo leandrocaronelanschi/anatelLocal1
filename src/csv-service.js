@@ -13,6 +13,16 @@ function normalizeCity(municipioUF) {
   return parts[0]?.trim() || null;
 }
 
+// Função utilitária para normalizar texto
+function normalize(text) {
+  if (!text) return "";
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, ""); // Remove acentos
+}
+
 function addToMapSet(map, key, value) {
   if (!map.has(key)) map.set(key, new Set());
   if (value) map.get(key).add(value);
@@ -89,10 +99,10 @@ async function search({ uf, cidade, bairro, cep, lat, lng, raio }) {
           )
             return;
         } else {
-          if (uf && ufVal !== uf) return;
-          if (cidade && cityVal !== cidade) return;
-          if (bairro && hoodVal !== bairro) return;
-          if (cep && cepVal !== cep) return;
+          if (uf && normalize(ufVal) !== normalize(uf)) return;
+          if (cidade && normalize(cityVal) !== normalize(cidade)) return;
+          if (bairro && normalize(hoodVal) !== normalize(bairro)) return;
+          if (cep && normalize(cepVal) !== normalize(cep)) return;
         }
 
         results.push(row);
