@@ -25,10 +25,15 @@ app.use(
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self' https: data:; " +
-      "font-src 'self' https: data:; " +
-      "style-src 'self' 'unsafe-inline' https:; " +
-      "script-src 'self' 'unsafe-inline' https:;"
+    "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' https://use.typekit.net; " +
+      "style-src 'self' 'unsafe-inline' https://use.typekit.net https://www.gstatic.com; " +
+      "font-src 'self' https://use.typekit.net data:; " +
+      "connect-src 'self' http://localhost:3000 ws://localhost:3000; " +
+      "img-src 'self' data:; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
   );
   next();
 });
