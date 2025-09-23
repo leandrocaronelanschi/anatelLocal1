@@ -1,4 +1,6 @@
 const express = require("express");
+const path = require("path");
+const session = require("express-session");
 const {
   buildIndexes,
   search,
@@ -10,6 +12,16 @@ const {
 const app = express();
 app.use(express.json());
 
+// Configuração da sessão
+app.use(
+  session({
+    secret: "umSegredoMuitoSecreto",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+// Content Security Policy para segurança
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
@@ -21,8 +33,59 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static("public"));
+// Servir arquivos estáticos, mas DESABILITAR a entrega automática do index.html na raiz
+app.use(express.static(path.join(__dirname, "..", "public"), { index: false }));
 
+// Usuários exemplo
+const USERS = [{ username: "admin", password: "123456" }];
+
+// Rota POST para login
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  const user = USERS.find(
+    (u) => u.username === username && u.password === password
+  );
+  if (user) {
+    req.session.user = username;
+    res.json({ ok: true });
+  } else {
+    res.status(401).json({ error: "Usuário ou senha inválidos!" });
+  }
+});
+
+// Rota para logout
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => res.redirect("/login.html"));
+});
+
+// Middleware para proteger rotas e redirecionar quem não estiver logado para login
+app.use((req, res, next) => {
+  if (
+    req.path === "/login" ||
+    req.path === "/login.html" ||
+    req.path === "/logout" ||
+    req.path.startsWith("/assets/") ||
+    req.path.startsWith("/css/") ||
+    req.path.startsWith("/js/")
+  )
+    return next();
+
+  if (!req.session.user) {
+    return res.redirect("/login.html");
+  }
+  next();
+});
+
+// Rota raiz protegida, serve index.html só para usuário autenticado
+app.get("/", (req, res) => {
+  if (req.session.user) {
+    return res.sendFile(path.join(__dirname, "..", "public", "index.html"));
+  } else {
+    return res.redirect("/login.html");
+  }
+});
+
+// Rotas principais do sistema
 app.get("/health", (_, res) => res.json({ ok: true, country: "Brasil" }));
 
 app.get("/filters/states", (req, res) => {
@@ -42,18 +105,6 @@ app.get("/filters/neighborhoods", (req, res) => {
   res.json({ uf, cidade, neighborhoods: getHoods(uf, cidade) });
 });
 
-const PORT = process.env.PORT || 3000;
-
-buildIndexes()
-  .then(() => {
-    app.listen(PORT, () => console.log(`API on http://localhost:${PORT}`));
-  })
-  .catch((e) => {
-    console.error("Falha ao indexar CSV:", e);
-    process.exit(1);
-  });
-
-// Endpoint unificado para as duas formas de busca
 app.get("/search", async (req, res) => {
   const uf = req.query.uf;
   const cidade = req.query.cidade;
@@ -66,12 +117,9 @@ app.get("/search", async (req, res) => {
 
   try {
     let rows;
-
-    // Se lat, lng e raio estão definidos, faz busca espacial somente
     if (lat !== undefined && lng !== undefined && raio !== undefined) {
       rows = await search({ lat, lng, raio });
     } else {
-      // Senão usa a busca tradicional por 1-4 filtros (qualquer combinação deles)
       rows = await search({ uf, cidade, bairro, cep });
     }
     res.json({ count: rows.length, rows });
@@ -79,3 +127,14 @@ app.get("/search", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+const PORT = process.env.PORT || 3000;
+
+buildIndexes()
+  .then(() => {
+    app.listen(PORT, () => console.log(`API on http://localhost:${PORT}`));
+  })
+  .catch((e) => {
+    console.error("Falha ao indexar CSV:", e);
+    process.exit(1);
+  });
