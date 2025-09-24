@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const session = require("express-session");
+const helmet = require("helmet"); // Importa o módulo helmet
 const {
   buildIndexes,
   search,
@@ -12,6 +13,38 @@ const {
 const app = express();
 app.use(express.json());
 
+// **IMPORTANTE**: O middleware do helmet deve vir antes de qualquer rota ou middleware
+// que possa enviar respostas ao cliente.
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://use.typekit.net"],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://use.typekit.net",
+        "https://www.gstatic.com",
+      ],
+      styleSrcElem: ["'self'", "https://www.gstatic.com"],
+      fontSrc: ["'self'", "https://use.typekit.net", "data:"],
+      connectSrc: [
+        "'self'",
+        "http://localhost:3000",
+        "ws://localhost:3000",
+        "http://localhost:*",
+        "ws://localhost:*",
+        "*",
+      ],
+      imgSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      manifestSrc: ["'self'"],
+    },
+  })
+);
+
 // Configuração da sessão
 app.use(
   session({
@@ -21,28 +54,28 @@ app.use(
   })
 );
 
-// Content Security Policy para segurança
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' https://use.typekit.net; " +
-      "style-src 'self' 'unsafe-inline' https://use.typekit.net https://www.gstatic.com; " +
-      "style-src-elem 'self' https://www.gstatic.com; " +
-      "font-src 'self' https://use.typekit.net data:; " +
-      "connect-src 'self' http://localhost:3000 ws://localhost:3000; " +
-      "img-src 'self' data:; " +
-      "object-src 'none'; " +
-      "base-uri 'self'; " +
-      "form-action 'self'"
-  );
-  next();
+// **SOLUÇÃO BRUTA: Servir os arquivos estáticos manualmente**
+// Isso evita o comportamento problemático do 'express.static' no seu executável.
+app.get("/login.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "login.html"));
 });
 
-// Servir arquivos estáticos, mas DESABILITAR a entrega automática do index.html na raiz
-app.use(express.static(path.join(__dirname, "..", "public"), { index: false }));
+app.get("/index.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "index.html"));
+});
 
-// Usuários exemplo
+app.use(
+  "/assets",
+  express.static(path.join(__dirname, "..", "public", "assets"))
+);
+app.use("/css", express.static(path.join(__dirname, "..", "public", "css")));
+app.use("/js", express.static(path.join(__dirname, "..", "public", "js")));
+app.use(
+  "/favicon.ico",
+  express.static(path.join(__dirname, "..", "public", "favicon.ico"))
+);
+
+// Usuários de exemplo
 const USERS = [{ username: "admin", password: "123456" }];
 
 // Rota POST para login
