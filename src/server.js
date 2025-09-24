@@ -28,6 +28,7 @@ app.use((req, res, next) => {
     "default-src 'self'; " +
       "script-src 'self' 'unsafe-inline' https://use.typekit.net; " +
       "style-src 'self' 'unsafe-inline' https://use.typekit.net https://www.gstatic.com; " +
+      "style-src-elem 'self' https://www.gstatic.com; " +
       "font-src 'self' https://use.typekit.net data:; " +
       "connect-src 'self' http://localhost:3000 ws://localhost:3000; " +
       "img-src 'self' data:; " +
