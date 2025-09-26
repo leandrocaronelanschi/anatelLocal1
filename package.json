@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
-    "dev": "node src/server.js"
+    "dev": "node src/server.js",
+    "build-exe": "nexe src/server.js --output meu-sistema.exe --target windows-x64-16.0.0 --assets 'public/**/*' --build"
   },
   "keywords": [],
   "author": "",
